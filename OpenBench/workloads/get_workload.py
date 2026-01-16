@@ -30,7 +30,7 @@ import sys
 
 import OpenBench.utils
 
-from OpenBench.config import OPENBENCH_CONFIG
+from OpenBench.config import OPENBENCH_CONFIG, OPENBENCH_CUSTOM_FOCUS
 from OpenBench.models import Result, Test
 
 from django.db import transaction
@@ -170,8 +170,11 @@ def compute_resource_distribution(workloads, machine, has_focus):
 
     for x in OpenBench.utils.getRecentMachines():
         if x != machine and x.workload in worker_dist:
-            if has_focus or worker_dist[x.workload]['engine'] not in x.info.get('focus', []):
+            if OPENBENCH_CUSTOM_FOCUS:
                 worker_dist[x.workload]['threads'] += x.info['concurrency']
+            else:
+                if has_focus or worker_dist[x.workload]['engine'] not in x.info.get('focus', []):
+                    worker_dist[x.workload]['threads'] += x.info['concurrency']
 
     # Count of tests that exist for a particular dev_engine
 

@@ -51,8 +51,11 @@ class PGNWatcher(threading.Thread):
 
             # First PGN will create the initial .tar file
             mode = 'a' if os.path.exists(tar_path) else 'w'
-            with tarfile.open(tar_path, mode) as tar:
-                tar.add(pgn_path, arcname=pgn.filename())
+            try:
+                with tarfile.open(tar_path, mode) as tar:
+                    tar.add(pgn_path, arcname=pgn.filename())
+            except Exception as e:
+                print(f"Blew up when opening {tar_path!r} -> {type(e)}: {e}")
 
             # Delete the raw .pgn.bz2 file, and don't process it again
             FileSystemStorage().delete(pgn.filename())

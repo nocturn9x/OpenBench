@@ -10,7 +10,7 @@
     "use_cross_approval"          : false,
     "require_login_to_view"       : false,
     "require_manual_registration" : false,
-    "balance_engine_throughputs"  : false,
+    "balance_engine_throughputs"  : true,
 
     "books" : [
         "2moves_v1.epd",
@@ -24,7 +24,8 @@
         "UHO_4060_v2.epd",
         "UHO_4060_vB.epd",
         "UHO_4060_vT.epd",
-        "UHO_Lichess_4852_v1.epd"
+        "UHO_Lichess_4852_v1.epd",
+        "DFRC_4852_v2.epd"
     ],
 
     "engines" : [
@@ -33,8 +34,20 @@
         "Potential",
         "Turbulence",
         "Calvin",
-        "Stash",
         "Tortoise",
-        "Stormphrax"
+        "Stormphrax",
+        "Tarnished",
+        "Dragonrose",
+        "Horsie",
+        "AwesomeOpossum",
+        "Hobbes",
+        "Artisan",
+        "Weak",
+        "Chaos",
+        "Laminar",
+        "Cherry",
+        "Byte-Knight",
+        "Wilted",
+        "icarus"
     ]
 }
