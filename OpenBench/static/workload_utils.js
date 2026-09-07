@@ -6,13 +6,16 @@ function copy_text(text) {
     area.select();
 
     try {
-        document.execCommand("copy");
+        const copied = document.execCommand("copy");
         document.body.removeChild(area);
+        const feedback = document.getElementById('workload-feedback');
+        if (feedback) feedback.textContent = copied ? 'Copied.' : 'Copy failed.';
     }
 
     catch (err) {
         document.body.removeChild(area);
-        console.error("Unable to copy to Clipboard");
+        const feedback = document.getElementById('workload-feedback');
+        if (feedback) feedback.textContent = 'Copy failed.';
     }
 }
 
@@ -30,8 +33,7 @@ function copy_text_from_element(element_id, keep_url) {
 
 
 function copy_text_codeblock(element_id, keep_url) {
-    var text = document.getElementById(element_id).innerHTML;
-    text = text.replace(/<br>/g, "\n");
+    var text = document.getElementById(element_id).innerText;
     text = ["```", text, "```"].join("\n");
 
     if (keep_url)
@@ -52,8 +54,6 @@ function populate_results(results) {
         // Highlight active rows
         if (result.active) tr.classList.add('active-highlight');
 
-        // Collapse the trinomial won/lost/drawn into the pentanomial tuple and
-        // its pair count, mirroring the aggregate summary tables above
         const penta = [result.LL, result.LD, result.DD, result.DW, result.WW];
         const pairs = penta.reduce((a, b) => a + b, 0);
 
@@ -61,7 +61,10 @@ function populate_results(results) {
             <td><a href="/machines/${result.machine__id}">${result.machine__id}</a></td>
             <td>${result.machine__user__username.charAt(0).toUpperCase() + result.machine__user__username.slice(1)}</td>
             <td class="numeric">${result.games}</td>
-            <td>(${penta.join(', ')})</td>
+            <td class="numeric">${result.wins}</td>
+            <td class="numeric">${result.draws}</td>
+            <td class="numeric">${result.losses}</td>
+            ${penta.map(count => `<td class="numeric">${count}</td>`).join('')}
             <td class="numeric">${pairs}</td>
             <td class="numeric">${result.timeloss}</td>
             <td class="numeric">${result.crashes}</td>
@@ -72,9 +75,24 @@ function populate_results(results) {
 }
 
 async function fetch_results(workload_id) {
-    fetch(`/api/workload/${workload_id}/results/`)
-        .then(r => r.json())
-        .then(data => populate_results(data.results))
+    const button = document.getElementById('fetch-results');
+    const feedback = document.getElementById('results-feedback');
+    if (button.disabled) return;
+    button.disabled = true;
+    button.textContent = 'Loading results…';
+    feedback.textContent = '';
+    try {
+        const response = await fetch(`/api/workload/${workload_id}/results/`);
+        if (!response.ok) throw new Error('Request failed');
+        const data = await response.json();
+        populate_results(data.results);
+        feedback.textContent = data.results.length ? `${data.results.length} worker results loaded.` : 'No worker results.';
+    } catch {
+        feedback.textContent = 'Unable to load results.';
+    } finally {
+        button.disabled = false;
+        button.textContent = 'Fetch individual results';
+    }
 }
 
 
@@ -129,8 +147,11 @@ function append_summary_section(table, label, rows, key_formatter) {
     header.className = 'table-header';
     header.appendChild(summary_cell('th', label));
 
-    ['Penta', 'Elo', 'Pairs', '%'].forEach(name => {
-        header.appendChild(summary_cell('th', name));
+    [['LL', 'Two losses'], ['LD', 'Loss and draw'], ['DD / WL', 'Two draws or a win and a loss'], ['DW', 'Draw and win'], ['WW', 'Two wins'], ['Elo', ''], ['Pairs', ''], ['%', '']].forEach(([name, title]) => {
+        const cell = summary_cell('th', name, 'numeric');
+        cell.scope = 'col';
+        if (title) cell.title = title;
+        header.appendChild(cell);
     });
 
     if (is_nps_available) {
@@ -145,10 +166,8 @@ function append_summary_section(table, label, rows, key_formatter) {
     rows.forEach(row => {
         const tr = document.createElement('tr');
 
-        // The API hands us display-ready fields: the penta tuple as a string,
-        // a point-estimate Elo, the pair count, and the % of the group total
         tr.appendChild(summary_cell('td', key_formatter ? key_formatter(row.key) : row.key));
-        tr.appendChild(summary_cell('td', row.penta));
+        row.penta_counts.forEach(count => tr.appendChild(summary_cell('td', count, 'numeric')));
         tr.appendChild(summary_cell('td', row.elo,   'numeric'));
         tr.appendChild(summary_cell('td', row.pairs, 'numeric'));
         tr.appendChild(summary_cell('td', row.percent, 'numeric'));
@@ -167,21 +186,46 @@ function append_summary_section(table, label, rows, key_formatter) {
 }
 
 async function fetch_summary(workload_id) {
-    fetch(`/api/workload/${workload_id}/summary/`)
-        .then(r => r.json())
-        .then(data => {
-            const container = document.getElementById('summary-container');
-            container.innerHTML = ''; // Rebuild the whole table each fetch
-
-            const table = document.createElement('table');
-            table.className = 'stripes wrappable summary-table';
-
-            append_summary_section(table, 'User', data.summary.user);
-            append_summary_section(table, 'CPU',  data.summary.cpu_name, format_cpu_name);
-            append_summary_section(table, 'ISA',  data.summary.isa_name);
-
-            container.appendChild(table);
-        })
+    const container = document.getElementById('summary-container');
+    container.setAttribute('aria-busy', 'true');
+    const message = document.createElement('p');
+    message.className = 'field-note';
+    message.setAttribute('role', 'status');
+    message.textContent = 'Loading worker summary…';
+    container.replaceChildren(message);
+    try {
+        const response = await fetch(`/api/workload/${workload_id}/summary/`);
+        if (!response.ok) throw new Error('Request failed');
+        const data = await response.json();
+        if (!data.summary.user.length) {
+            message.textContent = 'No worker results.';
+            return;
+        }
+        const heading = document.createElement('h2');
+        heading.textContent = 'Worker summary';
+        const region = document.createElement('div');
+        region.className = 'table-scroll';
+        region.tabIndex = 0;
+        region.setAttribute('role', 'region');
+        region.setAttribute('aria-label', 'Worker summary; scroll horizontally for more columns');
+        const table = document.createElement('table');
+        table.className = 'stripes wrappable summary-table';
+        append_summary_section(table, 'User', data.summary.user);
+        append_summary_section(table, 'CPU', data.summary.cpu_name, format_cpu_name);
+        append_summary_section(table, 'ISA', data.summary.isa_name);
+        region.append(table);
+        container.replaceChildren(heading, region);
+    } catch {
+        message.textContent = 'Could not load the worker summary.';
+        const retry = document.createElement('button');
+        retry.type = 'button';
+        retry.className = 'button';
+        retry.textContent = 'Try again';
+        retry.addEventListener('click', () => fetch_summary(workload_id));
+        container.append(retry);
+    } finally {
+        container.removeAttribute('aria-busy');
+    }
 }
 
 
