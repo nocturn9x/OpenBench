@@ -1,0 +1,35 @@
+#content .statblock { font-weight: 500; }
+.live-status { margin-left: auto; color: var(--muted); font-size: 12px; }
+#content .test-config { table-layout: fixed; width: 100%; }
+#content .test-config td { white-space: normal; overflow-wrap: anywhere; }
+#content .test-config .td-label { width: 32%; }
+#content .long-statblock { white-space: pre-wrap; overflow-wrap: anywhere; }
+#content .workload-container > *, #content [data-live] { min-width: 0; max-width: 100%; }
+#workload-form .form-columns { grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 24px; }
+#workload-form .form-stack { gap: 10px; }
+#workload-form .form-stack > h3 { font-size: 15px; }
+#workload-form .form-stack > h3:not(:first-child) { margin-top: 4px; padding-top: 12px; }
+@media (min-width: 641px) and (pointer: fine) {
+    #workload-form .field:has(> label) { grid-template-columns: 112px minmax(0, 1fr); align-items: center; gap: 8px; }
+    #content #workload-form .field > :is(input, select, textarea) { min-height: 32px; padding: 6px 8px; font-size: 14px; line-height: 1.2; }
+    #workload-form .field > label { font-size: 12px; }
+}
+@media (max-width: 640px) {
+    #content-header { flex-wrap: wrap; }
+    .header-edition { display: none; }
+    #content :is(.button, .anchorbutton, .choice) { min-height: 44px; }
+    #content .index-tests, #content .test-list { min-width: 0; width: 100%; }
+    #content :is(.index-tests, .test-list) :is(colgroup, thead) { display: none; }
+    #content :is(.index-tests, .test-list), #content :is(.index-tests, .test-list) tbody { display: block; }
+    #content :is(.index-tests, .test-list) tr:not([hidden]) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px 12px; padding: 12px; border-bottom: 1px solid var(--line-strong); }
+    #content :is(.index-tests, .test-list) td { min-width: 0; width: auto; padding: 4px 0; white-space: normal; overflow-wrap: anywhere; border: 0; }
+    #content :is(.index-tests, .test-list) :is(th, .test-revision, .time-control, .statblock, .test-notes-cell) { grid-column: 1 / -1; }
+    #content :is(.index-tests, .test-list) .statblock { padding: 10px; line-height: 1.5; }
+    #content .revision-link { display: inline-block; padding: 8px 0; }
+    #content .test-notes-row td { grid-column: 1 / -1; }
+    #content :is(.index-tests, .test-list) thead:has([data-show-test-notes]) { display: block; }
+    #content :is(.index-tests, .test-list) thead th:not(:last-child) { display: none; }
+    #content :is(.index-tests, .test-list) thead th:last-child { grid-column: 1 / -1; }
+    #content .test-config { font-size: 13px; }
+    #content .test-config :is(th, td) { padding: 10px 8px; }
+}

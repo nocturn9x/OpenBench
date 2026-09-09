@@ -117,6 +117,7 @@ class Configuration:
         self.fleet       = args.fleet    if args.fleet    else False
         self.noisy       = args.noisy    if args.noisy    else False
         self.focus       = args.focus    if args.focus    else []
+        self.only        = args.only     if args.only     else []
         self.force       = args.force    if args.force    else []
         self.cli_options = args.cli_options
 
@@ -943,7 +944,16 @@ def server_configure_match_runner(config, name, build_func, runner=None):
     cache_dir = os.path.join(os.getcwd(), 'Runners', identity)
     os.makedirs(cache_dir, exist_ok=True)
     runner_path = utils.check_for_engine_binary(os.path.join(cache_dir, '%s-ob' % name))
-    version = compare_versions(runner_path, runner['min_version'])
+    source_path = os.path.join(cache_dir, 'source.json')
+    try:
+        with open(source_path) as stream:
+            installed = json.load(stream)
+        with open(runner_path, 'rb') as stream:
+            expected = dict(runner, sha256=hashlib.sha256(stream.read()).hexdigest())
+        same_source = installed == expected
+    except (OSError, ValueError, TypeError):
+        same_source = False
+    version = compare_versions(runner_path, runner['min_version']) if same_source else None
     if version:
         config.runner_path = runner_path
         setattr(config, '%s_ver' % name, version)
@@ -964,11 +974,15 @@ def server_configure_match_runner(config, name, build_func, runner=None):
         binary = utils.check_for_engine_binary(os.path.join(runner_dir, name))
         version = compare_versions(binary, runner['min_version'])
         if not version:
-            raise OpenBenchMatchRunnerBuildFailedException()
+            raise utils.OpenBenchMatchRunnerBuildFailedException()
         out_path = os.path.join(cache_dir, '%s-ob%s' % (name, '.exe' if IS_WINDOWS else ''))
         if IS_LINUX:
             os.chmod(binary, 0o755)
         shutil.move(binary, out_path)
+        with open(out_path, 'rb') as stream:
+            source = dict(runner, sha256=hashlib.sha256(stream.read()).hexdigest())
+        with open(source_path, 'w') as stream:
+            json.dump(source, stream)
         config.runner_path = out_path
         setattr(config, '%s_ver' % name, version)
         print ('> Finished building v%s' % version)
@@ -987,7 +1001,7 @@ def build_fastchess_in_dir(config, runner_dir):
         print ('\nFailed to build fastchess\n\nCompiler Output:')
         for line in comp_output.split('\n'):
             print ('> %s' % (line))
-        raise OpenBenchMatchRunnerBuildFailedException()
+        raise utils.OpenBenchMatchRunnerBuildFailedException()
 
 def server_configure_worker(config):
 
@@ -1022,6 +1036,7 @@ def server_configure_worker(config):
         'noisy'          : config.noisy,          # Whether our results are unstable for time-based workloads
         'focus'          : config.focus,          # List of engines we have a preference to help
         'force'          : config.force,          # List of engines we prefer over workload priority
+        'only'           : config.only,
         'cli_options'    : config.cli_options,    # Command line options except for credentials and server
         'cxx_comp'       : config.cxx_comp,       # C++ Compiler used to build Fastchess binaries
         'fastchess_ver'  : config.fastchess_ver,  # Fastchess Version, set during server_configure_fastchess()
@@ -1342,6 +1357,7 @@ def parse_arguments(client_args):
     p.add_argument(      '--fleet'   , help='Fleet Mode'                  , action='store_true')
     p.add_argument(      '--noisy'   , help='Reject time-based workloads' , action='store_true')
     p.add_argument(      '--focus'   , help='Prefer certain engine(s)'    , nargs='+'          )
+    p.add_argument(      '--only'    , help='Only help certain engine(s)' , nargs='+'          )
     p.add_argument(      '--force'   , help='Prefer engine(s) over priority', nargs='+'         )
 
     # Ignore unknown arguments ( from client )

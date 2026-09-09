@@ -40,6 +40,7 @@ MEDIA_URL  = '/Media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'Media')
 
 INSTALLED_APPS = [
+    'daphne',
     'OpenBench',
     'OpenBench.templatetags',
     'django.contrib.admin',
@@ -83,6 +84,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'OpenSite.wsgi.application'
+ASGI_APPLICATION = 'OpenSite.asgi.application'
 
 
 # Database
